@@ -1,7 +1,6 @@
 package models
 
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions._
 import utils.GestoreConnection
 
 class PrenotazioniManager {
@@ -47,6 +46,22 @@ class PrenotazioniManager {
     mysqlDF
   }
 
+  def get_first_distinct_trip() : DataFrame = {
+    val table = "SELECT route_cappelli_trip_code,route_cappelli_departure_timestamp,route_cappelli_route_code,route_cappelli_next_route_code," +
+      "route_cappelli_departure_port_code,route_cappelli_arrival_port_code,route_cappelli_ship_code " +
+      "FROM tab_route_cappelli " +
+      "WHERE route_cappelli_progressive = 1 "
+    var mysqlDF: DataFrame = null
+    try{
+      mysqlDF = GestoreConnection.getInstance().do_query(table)
+    }
+    catch{
+      case x : Exception =>{
+        println("Exception in get_first_distinct_trip --> ",x.getMessage)
+      }
+    }
+    mysqlDF
+  }
 
   def get_all_bording_category_mq_occupati() : DataFrame = {
     val table = "SELECT boardingcard_category_id,(boardingcard_category_lunghezza * boardingcard_category_larghezza + boardingcard_category_delta_larghezza) AS mq_occupati,boardingcard_category_s18 " +

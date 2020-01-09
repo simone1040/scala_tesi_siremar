@@ -1,7 +1,5 @@
 package utils
 
-import org.apache.spark.sql.types.{StringType, IntegerType,StructField, StructType, TimestampType}
-
 class Configuration private{
     private val db_host : String = "127.0.0.1"
     private val db_name : String = "tesi_siremar_smartTicketing"

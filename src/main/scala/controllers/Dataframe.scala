@@ -3,6 +3,7 @@ package controllers
 import models.PrenotazioniManager
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.sum
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
 import utils.{Configuration, SparkContext}
 
 class Dataframe extends Object with SparkContext {
@@ -29,6 +30,30 @@ class Dataframe extends Object with SparkContext {
     merged_dataset = merged_dataset.groupBy("booking_ticket_departure_timestamp","ticket_trip_code","ticket_departure_route_code","ticket_arrival_route_code","ship_code","departure_port_name","arrival_port_name","boardingcard_category_s18")
       .agg(sum("mq_occupati") as "tot_mq_occupati")
     merged_dataset
+  }
+
+  def compute_dataframe_from_route_cappelli(dataframe_route_cappelli: DataFrame,dataframe_application : DataFrame) = {
+      val df : DataFrame = this.get_empty_final_dataframe()
+      dataframe_route_cappelli.foreach(
+        row => {
+          print(row)
+        }
+      )
+  }
+
+  def get_empty_final_dataframe() : DataFrame = {
+    val schema = StructType(
+      List(
+        StructField("booking_ticket_departure_timestamp", StringType, true),
+        StructField("ship_code", StringType, true),
+        StructField("departure_port_name", StringType, true),
+        StructField("arrival_port_name", StringType, true),
+        StructField("metri_garage_navi_spazio_totale", IntegerType, true),
+        StructField("tot_mq_occupati", IntegerType, true)
+      )
+    )
+    val df = spark.createDataFrame(schema)
+    df
   }
 
   def loadDataframe(pathfile : String) : Unit = {
