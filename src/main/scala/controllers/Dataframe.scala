@@ -4,32 +4,34 @@ import models.PrenotazioniManager
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.sum
 import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType}
-import utils.{Configuration, SparkContext}
+import utils.{SparkContext}
 
 class Dataframe extends Object with SparkContext {
   private var dataframe : DataFrame = null
 
   def createPrenotationDataframe() : Boolean = {
     var toRet : Boolean = false
+    //Prendo le prenotazioni dal database
     var dataframe_prenotation : DataFrame = PrenotazioniManager.getInstance().getPrenotazioniData()
     //DEVO FILTRARE IL DATAFRAME DELLE PRENOTAZIONI IN MODO DA AVERE SOLO QUELLE PER CUI HO I DATI DELLE METRATURA DEI GARAGE
     val interested_ship  : DataFrame = PrenotazioniManager.getInstance().getMaxCaricoNave().select("ship_id")
     if(dataframe_prenotation.count() > 0 && interested_ship.count() > 0){
-      //FILTRO LE PRENOTAZIONI IN BASE ALLE NAVI CHE HO, DEFAULT È INNER
-      dataframe = dataframe_prenotation.join(interested_ship,"ship_id")
-      dataframe  = this.compute_mq_occupati(dataframe_prenotation)
-      dataframe.write.parquet(Configuration.getInstance().get_prenotation_parquet_file())
-      toRet = true
+        dataframe  = this.compute_mq_occupati(dataframe_prenotation,interested_ship)
+        //dataframe.write.parquet(Configuration.getInstance().get_prenotation_parquet_file())
+        toRet = true
     }
     toRet
   }
 
-  def compute_mq_occupati(dataFrame: DataFrame) : DataFrame = {
+  def compute_mq_occupati(dataFrame_prenotation: DataFrame,dataFrame_interested_ship : DataFrame) : DataFrame = {
+    //Prendo per ogni categoria, quanti mq occupa
     val category_mq_occupati : DataFrame = PrenotazioniManager.getInstance().get_all_bording_category_mq_occupati()
-    var merged_dataset : DataFrame = dataFrame.join(category_mq_occupati,"boardingcard_category_id")
-    merged_dataset = merged_dataset.groupBy("booking_ticket_departure_timestamp","ticket_trip_code","ticket_departure_route_code","ticket_arrival_route_code","ship_code","departure_port_name","arrival_port_name","boardingcard_category_s18")
+    //FILTRO LE PRENOTAZIONI IN BASE ALLE NAVI CHE HO, DEFAULT È INNER
+    var dataframe = dataFrame_prenotation.join(dataFrame_interested_ship,"ship_id")
+    dataframe = dataframe.join(category_mq_occupati,"boardingcard_category_id")
+    dataframe = dataframe.groupBy("booking_ticket_departure_timestamp","ticket_trip_code","ticket_departure_route_code","ticket_arrival_route_code","ship_code","departure_port_name","arrival_port_name","boardingcard_category_s18")
       .agg(sum("mq_occupati") as "tot_mq_occupati")
-    merged_dataset
+    dataframe
   }
 
   def compute_dataframe_from_route_cappelli(dataframe_route_cappelli: DataFrame,dataframe_application : DataFrame) = {
